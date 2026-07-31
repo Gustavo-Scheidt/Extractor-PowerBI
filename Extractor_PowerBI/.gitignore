@@ -1,0 +1,12 @@
+# Dados capturados/gerados em tempo de execução (contêm resource key e dados reais do dashboard)
+payloads/
+respostas/
+csv/
+excel/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
