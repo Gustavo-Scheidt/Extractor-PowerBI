@@ -10,6 +10,7 @@ Rodar com: python test_parser.py
 
 import pandas as pd
 
+from capturador import _eh_requisicao_payload_powerbi
 from parser import parser
 
 # Resposta simulada de um visual com 3 colunas (Categoria, Ano, Valor).
@@ -86,6 +87,19 @@ def test_resposta_vazia_retorna_none():
     assert parser(None, "vazio") is None
     assert parser({}, "vazio") is None
     print("✔ test_resposta_vazia_retorna_none passou")
+
+
+def test_reconhece_urls_de_payload_em_diferentes_formatos():
+    class RequisicaoFake:
+        def __init__(self, url, method):
+            self.url = url
+            self.method = method
+
+    assert _eh_requisicao_payload_powerbi(RequisicaoFake("https://wabi-brazil-south-b-primary-api.analysis.windows.net/public/reports/querydata?synchronous=true", "POST"))
+    assert _eh_requisicao_payload_powerbi(RequisicaoFake("https://wabi-brazil-south-b-primary-api.analysis.windows.net/public/reports/queryData?synchronous=true", "POST"))
+    assert not _eh_requisicao_payload_powerbi(RequisicaoFake("https://app.powerbi.com/reportEmbed", "POST"))
+    assert not _eh_requisicao_payload_powerbi(RequisicaoFake("https://wabi-brazil-south-b-primary-api.analysis.windows.net/public/reports/querydata?synchronous=true", "GET"))
+    print("✔ test_reconhece_urls_de_payload_em_diferentes_formatos passou")
 
 
 def test_colunas_nao_identificadas_quando_select_nao_bate():

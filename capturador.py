@@ -9,6 +9,29 @@ from playwright.sync_api import sync_playwright
 from config import ARQUIVO_LOG_CAPTURA
 
 
+def _eh_requisicao_payload_powerbi(request):
+    """Identifica requisições POST de dados do Power BI em endpoints atuais e legados."""
+    if not request:
+        return False
+
+    url = (getattr(request, "url", "") or "").lower()
+    method = (getattr(request, "method", "") or "").upper()
+
+    if method != "POST":
+        return False
+
+    if "analysis.windows.net" not in url and "powerbi.com" not in url:
+        return False
+
+    if "/querydata" in url:
+        return True
+
+    if "/query" in url or "/execute" in url or "/semanticmodel" in url:
+        return True
+
+    return "querydata" in url or "executereport" in url or "executequery" in url
+
+
 def _log_captura(mensagem):
     """
     Grava uma linha no logs/captura.log (com timestamp) e imprime no console.
@@ -44,7 +67,7 @@ def capturar_payloads_da_url(url_dashboard, pasta_destino="payloads", max_pagina
         page = context.new_page()
 
         def interceptar_requisicao(request):
-            if "querydata" not in request.url or request.method != "POST":
+            if not _eh_requisicao_payload_powerbi(request):
                 return
 
             if estado["url_api"] is None:
@@ -90,12 +113,12 @@ def capturar_payloads_da_url(url_dashboard, pasta_destino="payloads", max_pagina
 
         _log_captura("Acessando a página e aguardando os dados carregarem...")
         try:
-            page.goto(url_dashboard, wait_until="load", timeout=30000)
+            page.goto(url_dashboard, wait_until="domcontentloaded", timeout=60000)
         except Exception as e:
             _log_captura(f"Aviso no carregamento inicial: {e}")
 
         try:
-            page.wait_for_load_state("networkidle", timeout=15000)
+            page.wait_for_load_state("networkidle", timeout=30000)
         except Exception:
             pass
 
@@ -131,6 +154,11 @@ def capturar_payloads_da_url(url_dashboard, pasta_destino="payloads", max_pagina
             with open(os.path.join(pasta_destino, "api_url.txt"), "w", encoding="utf-8") as f:
                 f.write(estado["url_api"])
 
+        if estado["payload_count"] == 0:
+            _log_captura(
+                "Nenhum payload foi capturado. Isso geralmente indica que a URL do dashboard não abriu o relatório ou que o Power BI bloqueou a sessão de navegação."
+            )
+
         _log_captura(f"Total geral de payloads capturados: {estado['payload_count']}")
 
         browser.close()
@@ -159,15 +187,15 @@ def _rolar_e_esperar(page):
             continue
 
 
-def _esperar_novo_payload(page, estado, contagem_antes, timeout_ms=8000):
+def _esperar_novo_payload(page, estado, contagem_antes, timeout_ms=30000):
     """Espera ativamente até que pelo menos um payload novo seja adicionado."""
-    intervalo = 250
+    intervalo = 500
     tempo_total = 0
     while tempo_total < timeout_ms:
         page.wait_for_timeout(intervalo)
         tempo_total += intervalo
         if estado["payload_count"] > contagem_antes:
-            page.wait_for_timeout(600)
+            page.wait_for_timeout(1000)
             return
 
 

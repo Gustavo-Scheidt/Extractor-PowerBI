@@ -150,8 +150,7 @@ Executar o fluxo completo:
     python main.py --url "https://app.powerbi.com/view?r=..."
 
 Executar o fluxo completo com navegador visível:
-
-    python main.py --url "https://app.powerbi.com/view?r=..." --debug
+clea
 
 ===============================================================================
                            OBSERVAÇÕES
